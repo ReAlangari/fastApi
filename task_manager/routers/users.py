@@ -1,30 +1,24 @@
 from typing import Annotated, List, Literal, Optional
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from schemas.models import User, UserCreate
-from storage import load_db, save_db
+from task_manager.db_models import User as UserModel, UserRole
+from task_manager.schemas.models import User, UserCreate
+from task_manager.storage import get_db
 
 router = APIRouter(prefix="/users", tags=["users"])
 
-def _ensure_user_ids(data: dict) -> None:
-    updated = False
-    users = data.get("users", [])
-    next_id = 1
-    for user in users:
-        if "id" in user and isinstance(user["id"], int):
-            next_id = max(next_id, user["id"] + 1)
-        if "name" not in user and "username" in user:
-            user["name"] = user["username"]
-            updated = True
-    for user in users:
-        if "id" not in user:
-            user["id"] = next_id
-            next_id += 1
-            updated = True
-    if updated:
-        data["users"] = users
-        save_db(data)
+
+def _serialize_user(user_model: UserModel) -> User:
+    return User.model_validate(
+        {
+            "id": user_model.id,
+            "name": user_model.name,
+            "role": user_model.role.value,
+        }
+    )
 
 
 @router.get("/", response_model=List[User])
@@ -33,25 +27,25 @@ async def list_users(
         Optional[Literal["admin", "manager", "member"]], Query()
     ] = None,
     name: Annotated[Optional[str], Query()] = None,
+    db: Session = Depends(get_db),
 ) -> List[User]:
-    data = load_db()
-    _ensure_user_ids(data)
-    users = [User.model_validate(item) for item in data["users"]]
-    results = users
-    if role:
-        results = [user for user in results if user.role == role]
+    stmt = select(UserModel)
+    role_value = UserRole(role) if role else None
+    if role_value:
+        stmt = stmt.where(UserModel.role == role_value)
     if name:
-        results = [user for user in results if user.name == name]
-    return results
+        stmt = stmt.where(UserModel.name == name)
+    users = db.execute(stmt).scalars().all()
+    return [_serialize_user(user) for user in users]
 
 
 @router.post("/", response_model=User)
-async def create_user(user: UserCreate) -> User:
-    data = load_db()
-    _ensure_user_ids(data)
-    users = data["users"]
-    next_id = max((u.get("id", 0) for u in users), default=0) + 1
-    new_user = User(id=next_id, **user.model_dump())
-    users.append(new_user.model_dump())
-    save_db(data)
-    return new_user
+async def create_user(
+    user: UserCreate,
+    db: Session = Depends(get_db),
+) -> User:
+    db_user = UserModel(name=user.name, role=UserRole(user.role))
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    return _serialize_user(db_user)

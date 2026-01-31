@@ -1,57 +1,58 @@
 # Task Management API + Streamlit UI
 
-FastAPI backend for managing users and tasks, with a Streamlit UI for easy interaction.
+Lightweight FastAPI backend + Streamlit dashboard for managing users and tasks in one place.
 
-## Project Structure
+## Features
 
-```
-task_manager/
-├── main.py
-├── db.json
-├── routers/
-│   ├── users.py
-│   └── tasks.py
-└── schemas/
-    └── models.py
-```
+- Async FastAPI endpoints for users and tasks, with SQLAlchemy/SQLite persistence by default.
+- Streamlit UX for viewing the Kanban board, creating tasks, and managing the team.
+- Built-in migration script to move legacy `db.json` data into the SQL database.
 
-## Requirements
+## Getting Started
 
-- Python 3.10+
+1. Install the dependencies:
 
-Install dependencies:
+   ```
+   py -m pip install -r requirements.txt
+   ```
 
-```
-py -m pip install -r requirements.txt
-```
+2. Copy `.env.example` to `.env` and optionally set `DATABASE_URL`. The app defaults to a local `sqlite:///task_manager.db` file when the variable is missing.
 
-## Run the API
+3. (Optional) Migrate JSON payloads into the database:
 
-From the `task_manager` directory:
+   ```
+   py -m task_manager.migrate_json_to_db
+   ```
 
-```
-py -m uvicorn main:app --reload
-```
+## Running the API
 
-API docs: `http://127.0.0.1:8000/docs`
-
-## Run the Streamlit UI
-
-From the `task_manager` directory (in a new terminal):
+Run from the repository root so imports resolve:
 
 ```
-py -m streamlit run streamlit_app.py
+py -m uvicorn task_manager.main:app --reload
 ```
 
-Streamlit URL is shown in the terminal (usually `http://localhost:8501`).
+Once the server is running, the OpenAPI docs are available at `http://127.0.0.1:8000/docs`.
 
-## Core Endpoints
+## Running the Streamlit UI
 
-- `GET /users` — list users
-- `POST /users` — create user
-- `GET /tasks` — list tasks
-- `POST /tasks` — create task
+In a separate terminal, point Streamlit to the same host:
 
-## Data Storage
+```
+py -m streamlit run task_manager/streamlit_app.py
+```
 
-Data is stored locally in `task_manager/db.json`.
+Use the sidebar to update the API base URL if you run the backend on a different port.
+
+## API Endpoints
+
+- `GET /users/` — list users
+- `POST /users/` — create a user
+- `GET /tasks/` — list tasks with optional filters
+- `POST /tasks/` — create a task
+
+## Database Notes
+
+- Uses SQLAlchemy models in `task_manager/db_models.py`. Tables are created automatically on startup.
+- Defaults to `sqlite:///task_manager.db` for local development; set `DATABASE_URL` for PostgreSQL or other engines.
+- Legacy `task_manager/db.json` is left as a backup after running `task_manager/migrate_json_to_db.py`.

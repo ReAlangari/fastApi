@@ -7,11 +7,13 @@ class UserCreate(BaseModel):
     name: Annotated[str, Field(min_length=2, max_length=50)]
     role: Annotated[Literal["admin", "manager", "member"], Field()]
 
-    model_config = {"extra": "ignore"}
+    model_config = {"extra": "ignore", "from_attributes": True}
 
 
 class User(UserCreate):
     id: Annotated[int, Field(ge=1)]
+
+    model_config = {"extra": "ignore", "from_attributes": True}
 
 
 class TaskCreate(BaseModel):
@@ -21,8 +23,10 @@ class TaskCreate(BaseModel):
     priority: Annotated[Literal["low", "medium", "high"], Field()]
     assigned_user_id: Annotated[Optional[int], Field(default=None, ge=1)]
 
-    model_config = {"extra": "ignore"}
+    model_config = {"extra": "ignore", "from_attributes": True}
 
 
 class Task(TaskCreate):
     id: Annotated[int, Field(ge=1)]
+
+    model_config = {"extra": "ignore", "from_attributes": True}

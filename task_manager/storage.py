@@ -1,20 +1,27 @@
-import json
-from pathlib import Path
-from typing import Any, Dict
+from typing import Generator
 
-DB_PATH = Path(__file__).resolve().parent / "db.json"
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
+
+from task_manager.config import DATABASE_URL
+from task_manager.db_models import Base
+
+engine = create_engine(DATABASE_URL, future=True)
+SessionLocal = sessionmaker(
+    bind=engine,
+    autoflush=False,
+    autocommit=False,
+    future=True,
+)
 
 
-def load_db() -> Dict[str, list]:
-    if not DB_PATH.exists():
-        return {"users": [], "tasks": []}
-    with DB_PATH.open("r", encoding="utf-8") as file:
-        data = json.load(file)
-    data.setdefault("users", [])
-    data.setdefault("tasks", [])
-    return data
+def init_db() -> None:
+    Base.metadata.create_all(bind=engine)
 
 
-def save_db(data: Dict[str, Any]) -> None:
-    with DB_PATH.open("w", encoding="utf-8") as file:
-        json.dump(data, file, ensure_ascii=True, indent=2)
+def get_db() -> Generator[Session, None, None]:
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

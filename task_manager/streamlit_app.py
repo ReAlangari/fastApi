@@ -170,4 +170,4 @@ with tab_users:
 
     with u_list:
         st.subheader("Active Directory")
-        st.dataframe(users, use_container_width=True)
+        st.dataframe(users, width="stretch")
